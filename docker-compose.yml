@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+    environment:
+      ROOT_DIR: "/usr/src/imdn/images"
+      CACHE_DIR: "/usr/src/imdn/cache"
+    volumes:
+      - "./images:/usr/src/imdn/images"
+      - "cache:/usr/src/imdn/cache"
+    ports:
+      - "8000:8000"
+
+volumes:
+  cache: { }
