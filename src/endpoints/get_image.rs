@@ -1,31 +1,32 @@
 use std::path::PathBuf;
 
-use poem::{handler, IntoResponse};
-use poem::http::StatusCode;
-use poem::web::Path;
+use actix_web::{get, HttpResponse, Responder, web};
+use actix_web::http::header::ContentType;
 use tracing::error;
 
 use crate::core::get_original_image_path::{get_original_image_path, ImageDeliveryError};
 
-#[handler]
-pub(crate) async fn get_image(Path(path): Path<String>) -> poem::Response {
+#[get("/api/image/{path}")]
+pub(crate) async fn get_image(path: web::Path<String>) -> impl Responder {
     match get_original_image_path(path.as_str()) {
         Ok(original_path) => match read_original(original_path.clone()) {
             Ok(file) => {
                 if let Some(mime) = get_mime(original_path) {
-                    file.with_content_type(mime.to_string()).into_response()
+                    HttpResponse::Ok().content_type(mime.to_string()).body(file)
                 } else {
-                    file.into_response()
+                    HttpResponse::Ok()
+                        .content_type(ContentType::octet_stream())
+                        .body(file)
                 }
             }
             Err(err) => {
                 error!("{err}");
-                StatusCode::NOT_FOUND.into_response()
+                HttpResponse::NotFound().finish()
             }
         },
-        Err(ImageDeliveryError::ForbiddenPath) => StatusCode::FORBIDDEN.into_response(),
-        Err(ImageDeliveryError::UnknownRoot) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
-        Err(ImageDeliveryError::FileNotFound) => StatusCode::NOT_FOUND.into_response(),
+        Err(ImageDeliveryError::ForbiddenPath) => HttpResponse::Forbidden().finish(),
+        Err(ImageDeliveryError::UnknownRoot) => HttpResponse::ServiceUnavailable().finish(),
+        Err(ImageDeliveryError::FileNotFound) => HttpResponse::NotFound().finish(),
     }
 }
 
