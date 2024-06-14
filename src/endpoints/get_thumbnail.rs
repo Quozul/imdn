@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::core::get_original_image_path::{get_original_image_path, ImageDeliveryError};
 use crate::core::try_get_thumbnail::{ThumbnailError, try_get_thumbnail};
 
-#[get("/api/thumbnail/{path}")]
+#[get("/api/thumbnail/{path:.*}")]
 pub(crate) async fn get_thumbnail(
     file_name: web::Path<String>,
     web::Query(ImageParams { lte, format }): web::Query<ImageParams>,

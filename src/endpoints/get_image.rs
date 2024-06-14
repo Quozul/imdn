@@ -6,7 +6,7 @@ use tracing::error;
 
 use crate::core::get_original_image_path::{get_original_image_path, ImageDeliveryError};
 
-#[get("/api/image/{path}")]
+#[get("/api/image/{path:.*}")]
 pub(crate) async fn get_image(path: web::Path<String>) -> impl Responder {
     match get_original_image_path(path.as_str()) {
         Ok(original_path) => match read_original(original_path.clone()) {
