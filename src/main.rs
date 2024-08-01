@@ -13,8 +13,11 @@ async fn main() -> std::io::Result<()> {
     }
     tracing_subscriber::fmt::init();
 
+    let port = std::env::var("PORT").unwrap_or("8080".into());
+    let bind_addr = format!("0.0.0.0:{port}");
+
     HttpServer::new(|| App::new().service(get_image).service(get_thumbnail))
-        .bind(("127.0.0.1", 8080))?
+        .bind(bind_addr)?
         .run()
         .await
 }
