@@ -9,19 +9,6 @@
 
 ## Example usage
 
-```yaml
-services:
-  image_cdn:
-    image: ghcr.io/quozul/imdn:master
-    environment:
-      ROOT_DIR: "/usr/src/imdn/images"
-      CACHE_DIR: "/usr/src/imdn/cache"
-    volumes:
-      - "./images:/usr/src/imdn/images"
-      - "cache:/usr/src/imdn/cache"
-    ports:
-      - "8000:8000"
-
-volumes:
-  cache: { }
-```
+> For easy installation/deployment, see [docker-compose.yml](docker-compose.yml).  
+> For endpoint documentation, see [api-docs.yaml](assets/docs.yaml). Import the file into https://editor.swagger.io/ for
+> testing.

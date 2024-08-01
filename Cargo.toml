@@ -18,3 +18,4 @@ tracing-subscriber = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 mime_guess = "2.0"
 thiserror = "1.0"
+actix-cors = "0.7.0"

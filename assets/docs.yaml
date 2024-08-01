@@ -1,0 +1,73 @@
+openapi: 3.0.1
+info:
+  title: Image API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/image/{path}:
+    get:
+      summary: Returns an image
+      parameters:
+        - name: path
+          in: path
+          description: The path to the image
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Image not found
+          content: { }
+        "503":
+          description: Service unavailable
+          content: { }
+        "403":
+          description: Forbidden
+          content: { }
+  /api/thumbnail/{path}:
+    get:
+      summary: Returns a thumbnail of an image
+      parameters:
+        - name: path
+          in: path
+          description: The path to the image
+          required: true
+          schema:
+            type: string
+        - name: lte
+          in: query
+          description: The maximum size of the thumbnail in pixels
+          schema:
+            type: integer
+            format: int32
+        - name: format
+          in: query
+          description: "The format of the thumbnail (e.g. \"png\", \"jpg\")"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Image not found
+          content: { }
+        "503":
+          description: Service unavailable
+          content: { }
+        "403":
+          description: Forbidden
+          content: { }
+components: { }

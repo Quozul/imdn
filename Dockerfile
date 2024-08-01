@@ -7,10 +7,10 @@ COPY . .
 
 RUN cargo build --release
 
-ENV PORT 8080
-
 FROM alpine
 
 COPY --from=build /usr/src/imdn/target/release/imdn /usr/bin/imdn
+
+ENV PORT 8080
 
 CMD ["imdn"]
