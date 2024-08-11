@@ -1,2 +1,5 @@
-pub(crate) mod get_original_image_path;
-pub(crate) mod try_get_thumbnail;
+mod image;
+pub mod image_service;
+pub mod readable_trait;
+mod thumbnail;
+pub mod thumbnail_service;
