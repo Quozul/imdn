@@ -5,11 +5,11 @@ use thiserror::Error;
 
 #[derive(Clone)]
 pub struct ImageService {
-    root: String,
+    root: PathBuf,
 }
 
 impl ImageService {
-    pub fn new(root: String) -> Self {
+    pub fn new(root: PathBuf) -> Self {
         Self { root }
     }
 

@@ -1,4 +1,7 @@
 use crate::core::readable_trait::ReadableTrait;
+use crate::core::seekable_writer::{
+    create_seekable_writer, create_seekable_writer_from_path, SeekableWriter,
+};
 use image::imageops::{resize, FilterType};
 use image::{ImageFormat, RgbImage};
 use std::io;
@@ -10,7 +13,7 @@ pub struct Thumbnail {
     format: ImageFormat,
     largest_side: u32,
     original_file_name: String,
-    cache_directory: String,
+    cache_directory: Option<PathBuf>,
 }
 
 impl ReadableTrait for Thumbnail {
@@ -29,19 +32,14 @@ impl ReadableTrait for Thumbnail {
 
         match self.try_read_from_cache(lte) {
             Ok(bytes) => Ok(bytes),
-            Err(Some(output_path)) => {
-                if let Some(parent) = output_path.parent() {
-                    if !parent.exists() {
-                        std::fs::create_dir_all(parent).map_err(ReadThumbnailError::IoError)?;
-                    }
-                }
-
+            Err(mut writer) => {
                 let img = resize(&img, width, height, FilterType::Lanczos3);
-                img.save_with_format(&output_path, self.format)
+                img.write_to(&mut writer, self.format)
                     .map_err(ReadThumbnailError::ImageError)?;
-                Ok(std::fs::read(output_path).map_err(ReadThumbnailError::IoError)?)
+                Ok(writer
+                    .read_all_bytes()
+                    .map_err(ReadThumbnailError::IoError)?)
             }
-            Err(None) => Err(Box::new(ReadThumbnailError::Oops)),
         }
     }
 }
@@ -52,7 +50,7 @@ impl Thumbnail {
         original_path: PathBuf,
         format: ImageFormat,
         lte: u32,
-        cache_directory: String,
+        cache_directory: Option<PathBuf>,
     ) -> Self {
         Thumbnail {
             original_file_name,
@@ -74,33 +72,39 @@ impl Thumbnail {
     }
 
     fn try_get_cache_path(&self, cache_key: String) -> Option<PathBuf> {
-        self.format.extensions_str().first().map(|new_extension| {
-            let new_file_name = format!(
-                "{}_{}.{}",
-                self.original_file_name, cache_key, new_extension
-            );
-            PathBuf::from(&self.cache_directory).join(new_file_name)
-        })
+        match (
+            self.format.extensions_str().first(),
+            self.cache_directory.clone(),
+        ) {
+            (Some(new_extension), Some(cache_directory)) => {
+                let new_file_name = format!(
+                    "{}_{}.{}",
+                    self.original_file_name, cache_key, new_extension
+                );
+                Some(cache_directory.join(new_file_name))
+            }
+            _ => None,
+        }
     }
 
-    fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Option<PathBuf>> {
+    fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Box<dyn SeekableWriter>> {
         let cache_key = format!("thumb_lte{lte}");
         self.try_get_cache_path(cache_key)
             .map(|cached_path| {
                 if cached_path.exists() {
-                    std::fs::read(&cached_path).ok().ok_or(Some(cached_path))
+                    std::fs::read(&cached_path)
+                        .ok()
+                        .ok_or(create_seekable_writer_from_path(cached_path))
                 } else {
-                    Err(Some(cached_path))
+                    Err(create_seekable_writer_from_path(cached_path))
                 }
             })
-            .unwrap_or(Err(None))
+            .unwrap_or(Err(create_seekable_writer()))
     }
 }
 
 #[derive(Error, Debug)]
 pub enum ReadThumbnailError {
-    #[error("oops")]
-    Oops,
     #[error("{0}")]
     ImageError(image::ImageError),
     #[error("{0}")]

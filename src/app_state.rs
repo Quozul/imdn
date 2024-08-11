@@ -1,15 +1,17 @@
 use crate::core::image_service::ImageService;
 use crate::core::thumbnail_service::ThumbnailService;
+use crate::parse_cli::Cli;
 
+#[derive(Clone)]
 pub struct AppState {
     pub image_service: ImageService,
     pub thumbnail_service: ThumbnailService,
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        let root = std::env::var("ROOT_DIR").unwrap(); // TODO: Get from CLI
-        let cache = std::env::var("CACHE_DIR").unwrap(); // TODO: If not provided, use mktemp
+impl AppState {
+    pub fn new(args: Cli) -> Self {
+        let root = args.root_directory;
+        let cache = args.cache_directory;
         let image_service = ImageService::new(root);
         Self {
             image_service: image_service.clone(),

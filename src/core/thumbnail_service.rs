@@ -2,15 +2,17 @@ use crate::core::image_service::{ImageService, ReadImageError};
 use crate::core::readable_trait::ReadableTrait;
 use crate::core::thumbnail::Thumbnail;
 use image::ImageFormat;
+use std::path::PathBuf;
 use thiserror::Error;
 
+#[derive(Clone)]
 pub struct ThumbnailService {
     image_service: ImageService,
-    cache_directory: String,
+    cache_directory: Option<PathBuf>,
 }
 
 impl ThumbnailService {
-    pub fn new(image_service: ImageService, cache_directory: String) -> Self {
+    pub fn new(image_service: ImageService, cache_directory: Option<PathBuf>) -> Self {
         Self {
             image_service,
             cache_directory,
