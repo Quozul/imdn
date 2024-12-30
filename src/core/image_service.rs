@@ -1,40 +1,40 @@
 use crate::core::image::Image;
-use crate::core::readable_trait::ReadableTrait;
-use std::path::PathBuf;
+use crate::parse_cli::ImageSource;
 use thiserror::Error;
 
 #[derive(Clone)]
 pub struct ImageService {
-    root: PathBuf,
+    image_source: ImageSource,
 }
 
 impl ImageService {
-    pub fn new(root: PathBuf) -> Self {
-        Self { root }
+    pub fn new(root: ImageSource) -> Self {
+        Self { image_source: root }
     }
 
-    pub fn read_image(
-        &self,
-        requested_path: &str,
-    ) -> Result<Box<dyn ReadableTrait>, ReadImageError> {
-        let complete_path = self.get_complete_path(requested_path)?;
-        Ok(Box::new(Image::new(complete_path)))
-    }
+    pub fn read_image(&self, requested_path: &str) -> Result<Image, ReadImageError> {
+        match &self.image_source {
+            ImageSource::Local { root_path } => {
+                let path = root_path.join(requested_path);
 
-    pub fn get_complete_path(&self, path: &str) -> Result<PathBuf, ReadImageError> {
-        let path = PathBuf::from(&self.root).join(path);
+                let complete_path = if path
+                    .components()
+                    .any(|x| x == std::path::Component::ParentDir)
+                {
+                    Err(ReadImageError::ForbiddenPath)
+                } else if !path.exists() {
+                    Err(ReadImageError::FileNotFound)
+                } else if !path.is_file() {
+                    Err(ReadImageError::ForbiddenPath)
+                } else {
+                    Ok(path)
+                }?;
 
-        if path
-            .components()
-            .any(|x| x == std::path::Component::ParentDir)
-        {
-            Err(ReadImageError::ForbiddenPath)
-        } else if !path.exists() {
-            Err(ReadImageError::FileNotFound)
-        } else if !path.is_file() {
-            Err(ReadImageError::ForbiddenPath)
-        } else {
-            Ok(path)
+                Ok(Image::from_path(complete_path)?)
+            }
+            ImageSource::S3 { .. } => {
+                panic!("S3 image service not supported");
+            }
         }
     }
 }
@@ -45,4 +45,6 @@ pub enum ReadImageError {
     ForbiddenPath,
     #[error("file not found")]
     FileNotFound,
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }

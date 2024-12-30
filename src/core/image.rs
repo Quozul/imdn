@@ -1,14 +1,26 @@
+use crate::core::image_service::ReadImageError;
 use crate::core::readable_trait::ReadableTrait;
 use mime_guess::mime;
 use std::path::PathBuf;
 
 pub struct Image {
-    pub path: PathBuf,
+    original_bytes: Vec<u8>,
+    mime_type: String,
 }
 
 impl ReadableTrait for Image {
     fn get_mime(&self) -> String {
-        self.path
+        self.mime_type.clone()
+    }
+
+    fn get_bytes(&self) -> Result<Vec<u8>, Box<(dyn std::error::Error)>> {
+        Ok(self.original_bytes.clone())
+    }
+}
+
+impl Image {
+    pub fn from_path(path: PathBuf) -> Result<Self, ReadImageError> {
+        let format = path
             .extension()
             .map(|ext| {
                 let ext = ext.to_string_lossy().to_string();
@@ -16,16 +28,12 @@ impl ReadableTrait for Image {
                 mime_guess::from_ext(ext).first_or_octet_stream()
             })
             .unwrap_or(mime::APPLICATION_OCTET_STREAM)
-            .to_string()
-    }
+            .to_string();
 
-    fn get_bytes(&self) -> Result<Vec<u8>, Box<(dyn std::error::Error)>> {
-        Ok(std::fs::read(&self.path)?)
-    }
-}
-
-impl Image {
-    pub fn new(path: PathBuf) -> Self {
-        Image { path }
+        let original_bytes = std::fs::read(&path)?;
+        Ok(Image {
+            mime_type: format,
+            original_bytes,
+        })
     }
 }

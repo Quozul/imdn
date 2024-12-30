@@ -19,6 +19,7 @@ pub async fn get_thumbnail(
         Ok(thumbnail) => thumbnail.into(),
         Err(ReadThumbnailError::FileNotFound) => HttpResponse::NotFound().finish(),
         Err(ReadThumbnailError::ForbiddenPath) => HttpResponse::Forbidden().finish(),
+        Err(ReadThumbnailError::Io(_)) => HttpResponse::InternalServerError().finish(),
     }
 }
 

@@ -23,18 +23,15 @@ impl ThumbnailService {
         &self,
         requested_path: &str,
         lte: u32,
-        format: String,
+        requested_extension: String,
     ) -> Result<Box<dyn ReadableTrait>, ReadThumbnailError> {
-        let format = ImageFormat::from_extension(format).unwrap_or(ImageFormat::Jpeg);
-        let original_image = self
-            .image_service
-            .get_complete_path(requested_path)
-            .map_err(ReadThumbnailError::from)?;
+        let format = ImageFormat::from_extension(requested_extension).unwrap_or(ImageFormat::Jpeg);
+        let original_image = self.image_service.read_image(requested_path)?;
 
         Ok(Box::new(Thumbnail::new(
             requested_path.to_string(),
-            original_image,
             format,
+            original_image,
             lte,
             self.cache_directory.clone(),
         )))
@@ -47,6 +44,8 @@ pub enum ReadThumbnailError {
     ForbiddenPath,
     #[error("file not found")]
     FileNotFound,
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl From<ReadImageError> for ReadThumbnailError {
@@ -54,6 +53,7 @@ impl From<ReadImageError> for ReadThumbnailError {
         match value {
             ReadImageError::ForbiddenPath => Self::ForbiddenPath,
             ReadImageError::FileNotFound => Self::FileNotFound,
+            ReadImageError::Io(err) => Self::Io(err),
         }
     }
 }

@@ -1,3 +1,4 @@
+use crate::core::image::Image;
 use crate::core::readable_trait::ReadableTrait;
 use crate::core::seekable_writer::{
     create_seekable_writer, create_seekable_writer_from_path, SeekableWriter,
@@ -9,8 +10,8 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 pub struct Thumbnail {
-    original_path: PathBuf,
-    format: ImageFormat,
+    original_image: Image,
+    requested_format: ImageFormat,
     largest_side: u32,
     original_file_name: String,
     cache_directory: Option<PathBuf>,
@@ -18,11 +19,11 @@ pub struct Thumbnail {
 
 impl ReadableTrait for Thumbnail {
     fn get_mime(&self) -> String {
-        self.format.to_mime_type().to_string()
+        self.requested_format.to_mime_type().to_string()
     }
 
     fn get_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let img = image::open(&self.original_path)
+        let img = image::load_from_memory(&self.original_image.get_bytes()?)
             .map_err(ReadThumbnailError::ImageError)?
             .into_rgb8();
 
@@ -34,7 +35,7 @@ impl ReadableTrait for Thumbnail {
             Ok(bytes) => Ok(bytes),
             Err(mut writer) => {
                 let img = resize(&img, width, height, FilterType::Lanczos3);
-                img.write_to(&mut writer, self.format)
+                img.write_to(&mut writer, self.requested_format)
                     .map_err(ReadThumbnailError::ImageError)?;
                 Ok(writer
                     .read_all_bytes()
@@ -47,15 +48,15 @@ impl ReadableTrait for Thumbnail {
 impl Thumbnail {
     pub fn new(
         original_file_name: String,
-        original_path: PathBuf,
-        format: ImageFormat,
+        requested_format: ImageFormat,
+        original_image: Image,
         lte: u32,
         cache_directory: Option<PathBuf>,
     ) -> Self {
         Thumbnail {
             original_file_name,
-            original_path,
-            format,
+            requested_format,
+            original_image,
             largest_side: lte,
             cache_directory,
         }
@@ -73,7 +74,7 @@ impl Thumbnail {
 
     fn try_get_cache_path(&self, cache_key: String) -> Option<PathBuf> {
         match (
-            self.format.extensions_str().first(),
+            self.requested_format.extensions_str().first(),
             self.cache_directory.clone(),
         ) {
             (Some(new_extension), Some(cache_directory)) => {

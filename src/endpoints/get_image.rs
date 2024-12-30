@@ -13,5 +13,8 @@ pub async fn get_image(data: web::Data<AppState>, path: web::Path<String>) -> im
         Err(ReadImageError::ForbiddenPath) => {
             HttpResponse::Forbidden().json(ErrorCode::new("forbidden"))
         }
+        Err(ReadImageError::Io(_)) => {
+            HttpResponse::InternalServerError().json(ErrorCode::new("internal.server.error"))
+        }
     }
 }

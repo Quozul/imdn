@@ -10,7 +10,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(args: Cli) -> Self {
-        let root = args.root_directory;
+        let root = args.image_source;
         let cache = args.cache_directory;
         let image_service = ImageService::new(root);
         Self {

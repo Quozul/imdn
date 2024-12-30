@@ -1,4 +1,4 @@
-mod image;
+pub(crate) mod image;
 pub mod image_service;
 pub mod readable_trait;
 mod seekable_writer;
