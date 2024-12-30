@@ -18,8 +18,11 @@ pub enum ImageSource {
         root_path: PathBuf,
     },
     S3 {
-        api_key: String,
-        api_secret: String,
+        #[arg(short, long)]
         bucket: String,
+        #[arg(short, long)]
+        region: String,
+        #[arg(short, long)]
+        endpoint: Option<String>,
     },
 }

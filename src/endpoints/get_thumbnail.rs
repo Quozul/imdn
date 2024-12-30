@@ -15,11 +15,13 @@ pub async fn get_thumbnail(
     match data
         .thumbnail_service
         .read_thumbnail(file_name.as_str(), lte, format)
+        .await
     {
         Ok(thumbnail) => thumbnail.into(),
         Err(ReadThumbnailError::FileNotFound) => HttpResponse::NotFound().finish(),
         Err(ReadThumbnailError::ForbiddenPath) => HttpResponse::Forbidden().finish(),
         Err(ReadThumbnailError::Io(_)) => HttpResponse::InternalServerError().finish(),
+        Err(ReadThumbnailError::S3) => HttpResponse::ServiceUnavailable().finish(),
     }
 }
 

@@ -19,19 +19,19 @@ impl ThumbnailService {
         }
     }
 
-    pub fn read_thumbnail(
+    pub async fn read_thumbnail(
         &self,
         requested_path: &str,
         lte: u32,
         requested_extension: String,
     ) -> Result<Box<dyn ReadableTrait>, ReadThumbnailError> {
+        let original_image = self.image_service.read_image(requested_path).await?;
         let format = ImageFormat::from_extension(requested_extension).unwrap_or(ImageFormat::Jpeg);
-        let original_image = self.image_service.read_image(requested_path)?;
 
         Ok(Box::new(Thumbnail::new(
+            original_image,
             requested_path.to_string(),
             format,
-            original_image,
             lte,
             self.cache_directory.clone(),
         )))
@@ -46,6 +46,8 @@ pub enum ReadThumbnailError {
     FileNotFound,
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("s3 communication error")]
+    S3,
 }
 
 impl From<ReadImageError> for ReadThumbnailError {
@@ -54,6 +56,7 @@ impl From<ReadImageError> for ReadThumbnailError {
             ReadImageError::ForbiddenPath => Self::ForbiddenPath,
             ReadImageError::FileNotFound => Self::FileNotFound,
             ReadImageError::Io(err) => Self::Io(err),
+            ReadImageError::S3 => Self::S3,
         }
     }
 }

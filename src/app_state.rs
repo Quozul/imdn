@@ -9,13 +9,13 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(args: Cli) -> Self {
+    pub fn new(args: Cli) -> Result<Self, Box<dyn std::error::Error>> {
         let root = args.image_source;
         let cache = args.cache_directory;
-        let image_service = ImageService::new(root);
-        Self {
+        let image_service = ImageService::new(root)?;
+        Ok(Self {
             image_service: image_service.clone(),
             thumbnail_service: ThumbnailService::new(image_service, cache),
-        }
+        })
     }
 }

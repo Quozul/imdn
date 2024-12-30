@@ -20,20 +20,30 @@ impl ReadableTrait for Image {
 
 impl Image {
     pub fn from_path(path: PathBuf) -> Result<Self, ReadImageError> {
-        let format = path
-            .extension()
-            .map(|ext| {
-                let ext = ext.to_string_lossy().to_string();
-                let ext = ext.as_str();
-                mime_guess::from_ext(ext).first_or_octet_stream()
-            })
-            .unwrap_or(mime::APPLICATION_OCTET_STREAM)
-            .to_string();
-
+        let mime_type = get_format_from_path(&path);
         let original_bytes = std::fs::read(&path)?;
         Ok(Image {
-            mime_type: format,
+            mime_type,
             original_bytes,
         })
     }
+
+    pub fn from_bytes(requested_path: &str, original_bytes: Vec<u8>) -> Image {
+        let mime_type = get_format_from_path(&PathBuf::from(requested_path));
+        Image {
+            mime_type,
+            original_bytes,
+        }
+    }
+}
+
+fn get_format_from_path(path: &PathBuf) -> String {
+    path.extension()
+        .map(|ext| {
+            let ext = ext.to_string_lossy().to_string();
+            let ext = ext.as_str();
+            mime_guess::from_ext(ext).first_or_octet_stream()
+        })
+        .unwrap_or(mime::APPLICATION_OCTET_STREAM)
+        .to_string()
 }

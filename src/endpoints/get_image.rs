@@ -5,7 +5,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 
 #[get("/api/image/{path:.*}")]
 pub async fn get_image(data: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
-    match data.image_service.read_image(path.as_str()) {
+    match data.image_service.read_image(path.as_str()).await {
         Ok(cdn_image) => cdn_image.into(),
         Err(ReadImageError::FileNotFound) => {
             HttpResponse::NotFound().json(ErrorCode::new("not.found"))
@@ -15,6 +15,9 @@ pub async fn get_image(data: web::Data<AppState>, path: web::Path<String>) -> im
         }
         Err(ReadImageError::Io(_)) => {
             HttpResponse::InternalServerError().json(ErrorCode::new("internal.server.error"))
+        }
+        Err(ReadImageError::S3) => {
+            HttpResponse::ServiceUnavailable().json(ErrorCode::new("service.unavailable"))
         }
     }
 }

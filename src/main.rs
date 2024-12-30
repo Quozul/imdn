@@ -28,7 +28,9 @@ async fn main() -> std::io::Result<()> {
             .allowed_methods(vec!["GET"])
             .max_age(3600);
         App::new()
-            .app_data(web::Data::new(AppState::new(args.clone())))
+            .app_data(web::Data::new(
+                AppState::new(args.clone()).expect("Failed to initialize application."),
+            ))
             .wrap(cors)
             .service(get_image)
             .service(get_thumbnail)

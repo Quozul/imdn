@@ -47,16 +47,16 @@ impl ReadableTrait for Thumbnail {
 
 impl Thumbnail {
     pub fn new(
+        original_image: Image,
         original_file_name: String,
         requested_format: ImageFormat,
-        original_image: Image,
         lte: u32,
         cache_directory: Option<PathBuf>,
     ) -> Self {
         Thumbnail {
+            original_image,
             original_file_name,
             requested_format,
-            original_image,
             largest_side: lte,
             cache_directory,
         }
