@@ -1,5 +1,4 @@
 use crate::core::image_service::{ImageService, ReadImageError};
-use crate::core::readable_trait::ReadableTrait;
 use crate::core::thumbnail::Thumbnail;
 use image::ImageFormat;
 use std::path::PathBuf;
@@ -24,17 +23,16 @@ impl ThumbnailService {
         requested_path: &str,
         lte: u32,
         requested_extension: String,
-    ) -> Result<Box<dyn ReadableTrait>, ReadThumbnailError> {
-        let original_image = self.image_service.read_image(requested_path).await?;
+    ) -> Result<Thumbnail, ReadThumbnailError> {
         let format = ImageFormat::from_extension(requested_extension).unwrap_or(ImageFormat::Jpeg);
 
-        Ok(Box::new(Thumbnail::new(
-            original_image,
+        Ok(Thumbnail::new(
             requested_path.to_string(),
             format,
             lte,
             self.cache_directory.clone(),
-        )))
+            self.image_service.clone(),
+        ))
     }
 }
 

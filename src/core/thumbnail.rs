@@ -1,8 +1,9 @@
 use crate::core::image::Image;
-use crate::core::readable_trait::ReadableTrait;
+use crate::core::image_service::{ImageService, ReadImageError};
 use crate::core::seekable_writer::{
     create_seekable_writer, create_seekable_writer_from_path, SeekableWriter,
 };
+use actix_web::HttpResponse;
 use image::imageops::{resize, FilterType};
 use image::{ImageFormat, RgbImage};
 use std::io;
@@ -10,30 +11,29 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 pub struct Thumbnail {
-    original_image: Image,
+    image_service: ImageService,
     requested_format: ImageFormat,
     largest_side: u32,
     original_file_name: String,
     cache_directory: Option<PathBuf>,
 }
 
-impl ReadableTrait for Thumbnail {
-    fn get_mime(&self) -> String {
+impl Thumbnail {
+    pub fn get_mime(&self) -> String {
         self.requested_format.to_mime_type().to_string()
     }
 
-    fn get_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let img = image::load_from_memory(&self.original_image.get_bytes()?)
-            .map_err(ReadThumbnailError::ImageError)?
-            .into_rgb8();
-
-        // Check the maximum size of the original image so we do not create an unnecessary big thumbnail
-        let (width, height) = self.get_new_size(&img);
-        let lte = width.max(height);
-
-        match self.try_read_from_cache(lte) {
+    pub async fn get_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        match self.try_read_from_cache(self.largest_side) {
             Ok(bytes) => Ok(bytes),
             Err(mut writer) => {
+                let img = image::load_from_memory(&self.get_original_image().await?.get_bytes()?)
+                    .map_err(ReadThumbnailError::ImageError)?
+                    .into_rgb8();
+
+                // Check the maximum size of the original image so we do not create an unnecessary big thumbnail
+                let (width, height) = self.get_new_size(&img);
+
                 let img = resize(&img, width, height, FilterType::Lanczos3);
                 img.write_to(&mut writer, self.requested_format)
                     .map_err(ReadThumbnailError::ImageError)?;
@@ -43,23 +43,36 @@ impl ReadableTrait for Thumbnail {
             }
         }
     }
-}
 
-impl Thumbnail {
+    pub async fn into_response(self) -> HttpResponse {
+        match self.get_bytes().await {
+            Ok(body) => HttpResponse::Ok().content_type(self.get_mime()).body(body),
+            Err(_) => HttpResponse::InternalServerError().json(
+                crate::endpoints::error_code::ErrorCode::new("internal.server.error"),
+            ),
+        }
+    }
+
     pub fn new(
-        original_image: Image,
         original_file_name: String,
         requested_format: ImageFormat,
         lte: u32,
         cache_directory: Option<PathBuf>,
+        image_service: ImageService,
     ) -> Self {
         Thumbnail {
-            original_image,
+            image_service,
             original_file_name,
             requested_format,
             largest_side: lte,
             cache_directory,
         }
+    }
+
+    async fn get_original_image(&self) -> Result<Image, ReadImageError> {
+        self.image_service
+            .read_image(&self.original_file_name)
+            .await
     }
 
     fn get_new_size(&self, img: &RgbImage) -> (u32, u32) {

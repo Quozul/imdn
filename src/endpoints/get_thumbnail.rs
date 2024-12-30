@@ -17,7 +17,7 @@ pub async fn get_thumbnail(
         .read_thumbnail(file_name.as_str(), lte, format)
         .await
     {
-        Ok(thumbnail) => thumbnail.into(),
+        Ok(thumbnail) => thumbnail.into_response().await,
         Err(ReadThumbnailError::FileNotFound) => HttpResponse::NotFound().finish(),
         Err(ReadThumbnailError::ForbiddenPath) => HttpResponse::Forbidden().finish(),
         Err(ReadThumbnailError::Io(_)) => HttpResponse::InternalServerError().finish(),

@@ -1,5 +1,4 @@
 use crate::core::image::Image;
-use crate::core::readable_trait::ReadableTrait;
 use actix_web::HttpResponse;
 
 impl From<Image> for HttpResponse {
