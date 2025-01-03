@@ -1,11 +1,27 @@
 services:
   api:
     build: .
+    image: ghcr.io/quozul/imdn:master
     volumes:
       - "$HOME/Pictures:/usr/src/imdn/images"
       - "cache:/usr/src/imdn/cache"
     ports:
       - "8080:8080"
+
+  # For using with a S3 bucket instead of a volume:
+  #
+  # api:
+  #   image: ghcr.io/quozul/imdn:master
+  #   command: "imdn -c /cache s3 --bucket images --region eu-west-1 --endpoint https://s3.example.com/"
+  #   volumes:
+  #     - "cache:/cache"
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - AWS_ACCESS_KEY_ID=xxx
+  #     - AWS_SECRET_ACCESS_KEY=xxx
+  #   # You should store your AWS credentials in a .env file and use env_file: instead of environment
+  #   env_file: .env
 
 volumes:
   cache: { }

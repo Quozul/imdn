@@ -13,4 +13,4 @@ COPY --from=build /usr/src/imdn/target/release/imdn /usr/bin/imdn
 
 ENV PORT 8080
 
-CMD ["imdn", "-r", "/usr/src/imdn/images", "-c", "/usr/src/imdn/cache"]
+CMD ["imdn", "-c", "/usr/src/imdn/cache", "local", "/usr/src/imdn/images"]
