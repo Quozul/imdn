@@ -18,21 +18,20 @@ impl ThumbnailService {
         }
     }
 
-    pub async fn read_thumbnail(
+    pub fn read_thumbnail(
         &self,
         requested_path: &str,
         lte: u32,
         requested_extension: String,
-    ) -> Result<Thumbnail, ReadThumbnailError> {
+    ) -> Thumbnail {
         let format = ImageFormat::from_extension(requested_extension).unwrap_or(ImageFormat::Jpeg);
-
-        Ok(Thumbnail::new(
+        Thumbnail::new(
             requested_path.to_string(),
             format,
             lte,
             self.cache_directory.clone(),
             self.image_service.clone(),
-        ))
+        )
     }
 }
 

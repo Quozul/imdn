@@ -6,7 +6,7 @@ pub struct ErrorCode {
 }
 
 impl ErrorCode {
-    pub fn new(error_code: impl ToString) -> Self {
+    pub fn new(error_code: &impl ToString) -> Self {
         Self {
             error_code: error_code.to_string(),
         }

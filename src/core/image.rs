@@ -1,6 +1,6 @@
 use crate::core::image_service::ReadImageError;
 use mime_guess::mime;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct Image {
     original_bytes: Vec<u8>,
@@ -20,27 +20,26 @@ impl Image {
         let mime_type = get_format_from_path(&path);
         let original_bytes = tokio::fs::read(&path).await?;
         Ok(Image {
-            mime_type,
             original_bytes,
+            mime_type,
         })
     }
 
     pub fn from_bytes(requested_path: &str, original_bytes: Vec<u8>) -> Image {
         let mime_type = get_format_from_path(&PathBuf::from(requested_path));
         Image {
-            mime_type,
             original_bytes,
+            mime_type,
         }
     }
 }
 
-fn get_format_from_path(path: &PathBuf) -> String {
+fn get_format_from_path(path: &Path) -> String {
     path.extension()
-        .map(|ext| {
+        .map_or(mime::APPLICATION_OCTET_STREAM, |ext| {
             let ext = ext.to_string_lossy().to_string();
             let ext = ext.as_str();
             mime_guess::from_ext(ext).first_or_octet_stream()
         })
-        .unwrap_or(mime::APPLICATION_OCTET_STREAM)
         .to_string()
 }

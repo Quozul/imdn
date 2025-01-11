@@ -8,16 +8,16 @@ pub async fn get_image(data: web::Data<AppState>, path: web::Path<String>) -> im
     match data.image_service.read_image(path.as_str()).await {
         Ok(cdn_image) => cdn_image.into(),
         Err(ReadImageError::FileNotFound) => {
-            HttpResponse::NotFound().json(ErrorCode::new("not.found"))
+            HttpResponse::NotFound().json(ErrorCode::new(&"not.found"))
         }
         Err(ReadImageError::ForbiddenPath) => {
-            HttpResponse::Forbidden().json(ErrorCode::new("forbidden"))
+            HttpResponse::Forbidden().json(ErrorCode::new(&"forbidden"))
         }
         Err(ReadImageError::Io(_)) => {
-            HttpResponse::InternalServerError().json(ErrorCode::new("internal.server.error"))
+            HttpResponse::InternalServerError().json(ErrorCode::new(&"internal.server.error"))
         }
         Err(ReadImageError::S3) => {
-            HttpResponse::ServiceUnavailable().json(ErrorCode::new("service.unavailable"))
+            HttpResponse::ServiceUnavailable().json(ErrorCode::new(&"service.unavailable"))
         }
     }
 }

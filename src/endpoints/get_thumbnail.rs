@@ -1,6 +1,5 @@
 use crate::app_state::AppState;
-use crate::core::thumbnail_service::ReadThumbnailError;
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, web, Responder};
 use serde::Deserialize;
 
 #[get("/api/thumbnail/{path:.*}")]
@@ -12,17 +11,10 @@ pub async fn get_thumbnail(
     let format = format.unwrap_or(String::from("jpg"));
     let lte = lte.unwrap_or(512);
 
-    match data
-        .thumbnail_service
+    data.thumbnail_service
         .read_thumbnail(file_name.as_str(), lte, format)
+        .into_response()
         .await
-    {
-        Ok(thumbnail) => thumbnail.into_response().await,
-        Err(ReadThumbnailError::FileNotFound) => HttpResponse::NotFound().finish(),
-        Err(ReadThumbnailError::ForbiddenPath) => HttpResponse::Forbidden().finish(),
-        Err(ReadThumbnailError::Io(_)) => HttpResponse::InternalServerError().finish(),
-        Err(ReadThumbnailError::S3) => HttpResponse::ServiceUnavailable().finish(),
-    }
 }
 
 #[derive(Deserialize)]

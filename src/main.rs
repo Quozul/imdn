@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use crate::app_state::AppState;
 use crate::endpoints::get_image::get_image;
 use crate::endpoints::get_thumbnail::get_thumbnail;

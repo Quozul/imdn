@@ -46,7 +46,7 @@ impl Thumbnail {
         match self.get_bytes().await {
             Ok(body) => HttpResponse::Ok().content_type(self.get_mime()).body(body),
             Err(_) => HttpResponse::InternalServerError().json(
-                crate::endpoints::error_code::ErrorCode::new("internal.server.error"),
+                crate::endpoints::error_code::ErrorCode::new(&"internal.server.error"),
             ),
         }
     }
@@ -73,7 +73,7 @@ impl Thumbnail {
             .await
     }
 
-    fn try_get_cache_path(&self, cache_key: String) -> Option<PathBuf> {
+    fn try_get_cache_path(&self, cache_key: &str) -> Option<PathBuf> {
         match (
             self.requested_format.extensions_str().first(),
             &self.cache_directory,
@@ -91,7 +91,7 @@ impl Thumbnail {
 
     async fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Option<tokio::fs::File>> {
         let cache_key = format!("thumb_lte{lte}");
-        if let Some(cached_path) = self.try_get_cache_path(cache_key) {
+        if let Some(cached_path) = self.try_get_cache_path(&cache_key) {
             if cached_path.exists() {
                 tokio::fs::read(&cached_path)
                     .await
