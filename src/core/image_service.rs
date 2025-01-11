@@ -17,7 +17,7 @@ enum ImageProvider {
 }
 
 impl ImageService {
-    pub fn new(image_source: ImageSource) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(image_source: ImageSource) -> anyhow::Result<Self> {
         let image_provider = match image_source {
             ImageSource::Local { root_path } => ImageProvider::Local { root_path },
             ImageSource::S3 {
@@ -50,7 +50,7 @@ impl ImageService {
                     Ok(path)
                 }?;
 
-                Ok(Image::from_path(complete_path)?)
+                Ok(Image::from_path(complete_path).await?)
             }
             ImageProvider::S3 { client, bucket } => {
                 let response = client
@@ -66,16 +66,13 @@ impl ImageService {
                     .collect()
                     .await
                     .map_err(|_| ReadImageError::S3)?;
-                Ok(Image::from_bytes(&requested_path, byte_stream.to_vec()))
+                Ok(Image::from_bytes(requested_path, byte_stream.to_vec()))
             }
         }
     }
 }
 
-fn get_s3_client(
-    endpoint: Option<String>,
-    region: String,
-) -> Result<Client, Box<dyn std::error::Error>> {
+fn get_s3_client(endpoint: Option<String>, region: String) -> anyhow::Result<Client> {
     let key_id = std::env::var("AWS_ACCESS_KEY_ID")?;
     let secret_key = std::env::var("AWS_SECRET_ACCESS_KEY")?;
 

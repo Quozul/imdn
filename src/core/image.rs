@@ -12,13 +12,13 @@ impl Image {
         self.mime_type.clone()
     }
 
-    pub(crate) fn get_bytes(&self) -> Result<Vec<u8>, Box<(dyn std::error::Error)>> {
-        Ok(self.original_bytes.clone())
+    pub(crate) fn get_bytes(&self) -> &Vec<u8> {
+        &self.original_bytes
     }
 
-    pub fn from_path(path: PathBuf) -> Result<Self, ReadImageError> {
+    pub async fn from_path(path: PathBuf) -> Result<Self, ReadImageError> {
         let mime_type = get_format_from_path(&path);
-        let original_bytes = std::fs::read(&path)?;
+        let original_bytes = tokio::fs::read(&path).await?;
         Ok(Image {
             mime_type,
             original_bytes,

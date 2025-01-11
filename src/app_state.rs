@@ -9,7 +9,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(args: Cli) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(args: Cli) -> anyhow::Result<Self> {
         let root = args.image_source;
         let cache = args.cache_directory;
         let image_service = ImageService::new(root)?;

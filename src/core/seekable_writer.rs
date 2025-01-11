@@ -23,9 +23,9 @@ pub fn create_seekable_writer() -> Box<dyn SeekableWriter> {
 }
 
 /// Creates a new seekable writer from a file or fallback to a writer in memory
-pub fn create_seekable_writer_from_path(path: PathBuf) -> Box<dyn SeekableWriter> {
+pub async fn create_seekable_writer_from_path(path: PathBuf) -> Box<dyn SeekableWriter> {
     if let Some(parent) = path.parent() {
-        if !parent.exists() && std::fs::create_dir_all(parent).is_err() {
+        if !parent.exists() && tokio::fs::create_dir_all(parent).await.is_err() {
             return create_seekable_writer();
         }
     }

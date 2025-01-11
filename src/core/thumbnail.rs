@@ -23,18 +23,18 @@ impl Thumbnail {
         self.requested_format.to_mime_type().to_string()
     }
 
-    pub async fn get_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        match self.try_read_from_cache(self.largest_side) {
+    pub async fn get_bytes(&self) -> anyhow::Result<Vec<u8>> {
+        match self.try_read_from_cache(self.largest_side).await {
             Ok(bytes) => Ok(bytes),
             Err(mut writer) => {
-                let img = image::load_from_memory(&self.get_original_image().await?.get_bytes()?)
+                let img = image::load_from_memory(self.get_original_image().await?.get_bytes())
                     .map_err(ReadThumbnailError::ImageError)?
                     .into_rgb8();
 
                 // Check the maximum size of the original image so we do not create an unnecessary big thumbnail
                 let (width, height) = self.get_new_size(&img);
 
-                let img = resize(&img, width, height, FilterType::Lanczos3);
+                let img = resize(&img, width, height, FilterType::Triangle);
                 img.write_to(&mut writer, self.requested_format)
                     .map_err(ReadThumbnailError::ImageError)?;
                 Ok(writer
@@ -101,19 +101,20 @@ impl Thumbnail {
         }
     }
 
-    fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Box<dyn SeekableWriter>> {
+    async fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Box<dyn SeekableWriter>> {
         let cache_key = format!("thumb_lte{lte}");
-        self.try_get_cache_path(cache_key)
-            .map(|cached_path| {
-                if cached_path.exists() {
-                    std::fs::read(&cached_path)
-                        .ok()
-                        .ok_or(create_seekable_writer_from_path(cached_path))
-                } else {
-                    Err(create_seekable_writer_from_path(cached_path))
-                }
-            })
-            .unwrap_or(Err(create_seekable_writer()))
+        if let Some(cached_path) = self.try_get_cache_path(cache_key) {
+            if cached_path.exists() {
+                tokio::fs::read(&cached_path)
+                    .await
+                    .ok()
+                    .ok_or(create_seekable_writer_from_path(cached_path).await)
+            } else {
+                Err(create_seekable_writer_from_path(cached_path).await)
+            }
+        } else {
+            Err(create_seekable_writer())
+        }
     }
 }
 
