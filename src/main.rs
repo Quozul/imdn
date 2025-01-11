@@ -5,18 +5,24 @@ use crate::parse_cli::Cli;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use clap::Parser;
-use tracing::Level;
+use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod app_state;
 mod core;
 mod endpoints;
 mod parse_cli;
+mod time;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let args = Cli::parse();
-    tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
+        .with(tracing_subscriber::fmt::layer().without_time())
         .init();
 
     let port = std::env::var("PORT").unwrap_or("8080".into());

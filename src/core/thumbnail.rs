@@ -1,14 +1,10 @@
 use crate::core::image::Image;
 use crate::core::image_service::{ImageService, ReadImageError};
-use crate::core::seekable_writer::{
-    create_seekable_writer, create_seekable_writer_from_path, SeekableWriter,
-};
+use crate::core::seekable_writer::create_seekable_writer_from_path;
+use crate::core::thumbnail_processor::ThumbnailProcessor;
 use actix_web::HttpResponse;
-use image::imageops::{resize, FilterType};
-use image::{ImageFormat, RgbImage};
-use std::io;
+use image::ImageFormat;
 use std::path::PathBuf;
-use thiserror::Error;
 
 pub struct Thumbnail {
     image_service: ImageService,
@@ -26,20 +22,22 @@ impl Thumbnail {
     pub async fn get_bytes(&self) -> anyhow::Result<Vec<u8>> {
         match self.try_read_from_cache(self.largest_side).await {
             Ok(bytes) => Ok(bytes),
-            Err(mut writer) => {
-                let img = image::load_from_memory(self.get_original_image().await?.get_bytes())
-                    .map_err(ReadThumbnailError::ImageError)?
-                    .into_rgb8();
-
-                // Check the maximum size of the original image so we do not create an unnecessary big thumbnail
-                let (width, height) = self.get_new_size(&img);
-
-                let img = resize(&img, width, height, FilterType::Triangle);
-                img.write_to(&mut writer, self.requested_format)
-                    .map_err(ReadThumbnailError::ImageError)?;
-                Ok(writer
-                    .read_all_bytes()
-                    .map_err(ReadThumbnailError::IoError)?)
+            Err(Some(writer)) => {
+                let image = self.get_original_image().await?;
+                let mut thumbnail_processor = ThumbnailProcessor {
+                    largest_side: self.largest_side,
+                    requested_format: self.requested_format,
+                    cache_file: writer.into_std().await,
+                };
+                let result_bytes = actix_web::web::block(move || {
+                    let bytes = image.get_bytes();
+                    thumbnail_processor.process_image(bytes)
+                })
+                .await??;
+                Ok(result_bytes)
+            }
+            Err(None) => {
+                anyhow::bail!("Thumbnail could not be read from cache")
             }
         }
     }
@@ -75,20 +73,10 @@ impl Thumbnail {
             .await
     }
 
-    fn get_new_size(&self, img: &RgbImage) -> (u32, u32) {
-        let (width, height) = img.dimensions();
-        let scale = (self.largest_side as f32).min((width as f32).max(height as f32))
-            / (width as f32).max(height as f32);
-        let new_width = (width as f32 * scale) as u32;
-        let new_height = (height as f32 * scale) as u32;
-
-        (new_width, new_height)
-    }
-
     fn try_get_cache_path(&self, cache_key: String) -> Option<PathBuf> {
         match (
             self.requested_format.extensions_str().first(),
-            self.cache_directory.clone(),
+            &self.cache_directory,
         ) {
             (Some(new_extension), Some(cache_directory)) => {
                 let new_file_name = format!(
@@ -101,27 +89,19 @@ impl Thumbnail {
         }
     }
 
-    async fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Box<dyn SeekableWriter>> {
+    async fn try_read_from_cache(&self, lte: u32) -> Result<Vec<u8>, Option<tokio::fs::File>> {
         let cache_key = format!("thumb_lte{lte}");
         if let Some(cached_path) = self.try_get_cache_path(cache_key) {
             if cached_path.exists() {
                 tokio::fs::read(&cached_path)
                     .await
                     .ok()
-                    .ok_or(create_seekable_writer_from_path(cached_path).await)
+                    .ok_or(create_seekable_writer_from_path(&cached_path).await.ok())
             } else {
-                Err(create_seekable_writer_from_path(cached_path).await)
+                Err(create_seekable_writer_from_path(&cached_path).await.ok())
             }
         } else {
-            Err(create_seekable_writer())
+            Err(None)
         }
     }
-}
-
-#[derive(Error, Debug)]
-pub enum ReadThumbnailError {
-    #[error("{0}")]
-    ImageError(image::ImageError),
-    #[error("{0}")]
-    IoError(io::Error),
 }

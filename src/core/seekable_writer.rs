@@ -1,43 +1,20 @@
-use std::fs::OpenOptions;
 use std::io;
-use std::io::{Cursor, Read, Seek, Write};
-use std::path::PathBuf;
-
-pub trait SeekableWriter: Write + Seek + Read {}
-
-impl<T> SeekableWriter for T where T: Write + Seek + Read {}
-
-impl dyn SeekableWriter {
-    pub fn read_all_bytes(&mut self) -> io::Result<Vec<u8>> {
-        let mut buffer = Vec::new();
-        self.seek(io::SeekFrom::Start(0))?; // Rewind the writer to the beginning
-        self.read_to_end(&mut buffer)?;
-        Ok(buffer)
-    }
-}
-
-pub fn create_seekable_writer() -> Box<dyn SeekableWriter> {
-    let buffer: Vec<u8> = vec![];
-    let cursor = Cursor::new(buffer);
-    Box::new(cursor)
-}
+use std::path::Path;
+use tokio::fs::File;
 
 /// Creates a new seekable writer from a file or fallback to a writer in memory
-pub async fn create_seekable_writer_from_path(path: PathBuf) -> Box<dyn SeekableWriter> {
+pub async fn create_seekable_writer_from_path(path: &Path) -> io::Result<File> {
     if let Some(parent) = path.parent() {
-        if !parent.exists() && tokio::fs::create_dir_all(parent).await.is_err() {
-            return create_seekable_writer();
+        if !parent.exists() {
+            tokio::fs::create_dir_all(parent).await?;
         }
     }
 
-    match OpenOptions::new()
+    tokio::fs::OpenOptions::new()
         .create(true)
         .truncate(false)
         .read(true)
         .write(true)
         .open(path)
-    {
-        Ok(file) => Box::new(file),
-        Err(_) => create_seekable_writer(),
-    }
+        .await
 }
