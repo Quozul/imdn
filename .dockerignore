@@ -1,5 +1,7 @@
-/cache
-/target
 .idea/
 /.git
 /.github
+/assets
+/cache
+/images
+/target
