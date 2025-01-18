@@ -1,7 +1,6 @@
 import type { HttpBindings } from "@hono/node-server";
 import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 import { Hono } from "hono";
-import mime from "mime";
 import { authenticationMiddleware } from "./auth.js";
 import type { AppSettings } from "./cli.js";
 import { getObjectStream } from "./getObjectStream.js";
@@ -16,7 +15,7 @@ export function buildImageRouter(settings: AppSettings) {
 			}
 
 			const { image_id } = c.req.param();
-			const s3ObjectStream = await getObjectStream(
+			const { s3ObjectStream, contentType } = await getObjectStream(
 				settings.s3Configuration,
 				image_id,
 			);
@@ -27,7 +26,6 @@ export function buildImageRouter(settings: AppSettings) {
 
 			const { outgoing } = c.env;
 
-			const contentType = mime.getType(image_id) ?? "application/octet-stream";
 			outgoing.writeHead(200, {
 				"Content-Type": contentType,
 			});

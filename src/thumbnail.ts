@@ -42,7 +42,6 @@ export function buildThumbnailRouter(settings: AppSettings) {
 				const { outgoing } = c.env;
 				outgoing.writeHead(200, {
 					"Content-Type": `image/${format}`, // TODO: The mime type may not be correct
-					"access-control-allow-origin": "*",
 				});
 				stream.pipe(outgoing);
 				return RESPONSE_ALREADY_SENT;
@@ -52,13 +51,19 @@ export function buildThumbnailRouter(settings: AppSettings) {
 				return new Response("Service Unavailable", { status: 502 });
 			}
 
-			const s3ObjectStream = await getObjectStream(
+			const { s3ObjectStream, contentType } = await getObjectStream(
 				settings.s3Configuration,
 				image_id,
 			);
 
 			if (s3ObjectStream === undefined) {
 				return new Response("Not Found", { status: 404 });
+			}
+
+			if (!contentType.startsWith("image/")) {
+				return new Response("Requested resource is not an image", {
+					status: 400,
+				});
 			}
 
 			const transformer = sharp()
@@ -77,19 +82,23 @@ export function buildThumbnailRouter(settings: AppSettings) {
 			const { outgoing } = c.env;
 			outgoing.writeHead(200, {
 				"Content-Type": `image/${format}`, // TODO: The mime type may not be correct
-				"access-control-allow-origin": "*",
 			});
 
 			if (cachePath) {
 				const tee = new PassThrough();
-
 				const cacheStream = fs.createWriteStream(cachePath);
-				s3ObjectStream.pipe(transformer).pipe(tee);
 
 				tee.pipe(outgoing);
-				// FIXME: This crashes if we cannot write to the cache,
-				// FIXME: either because the parent dir does not exists or we do not have the write permission
-				tee.pipe(cacheStream);
+				tee.pipe(cacheStream).on("error", (err) => {
+					console.error("Cache stream error", err);
+				});
+
+				s3ObjectStream
+					.pipe(transformer)
+					.on("error", (err) => {
+						console.error("Could not transform the image", err);
+					})
+					.pipe(tee);
 			} else {
 				s3ObjectStream.pipe(transformer).pipe(outgoing);
 			}
