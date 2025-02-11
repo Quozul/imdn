@@ -17,12 +17,15 @@ export function getProgramSettings(): AppSettings {
 		options: {
 			"s3-bucket": {
 				type: "string",
+				default: process.env.S3_BUCKET_NAME,
 			},
 			"s3-endpoint": {
 				type: "string",
+				default: process.env.S3_ENDPOINT,
 			},
 			"s3-region": {
 				type: "string",
+				default: process.env.S3_REGION,
 			},
 			"cache-location": {
 				type: "string",
@@ -30,7 +33,7 @@ export function getProgramSettings(): AppSettings {
 			},
 			origin: {
 				type: "string",
-				default: "http://localhost:3000",
+				default: process.env.CDN_ORIGIN || "http://localhost:3000",
 			},
 		},
 	});
@@ -47,7 +50,7 @@ export function getProgramSettings(): AppSettings {
 	const region = values["s3-region"];
 
 	if (bucketName && endpoint && region) {
-		const client = new S3Client({
+		const s3Client = new S3Client({
 			endpoint: endpoint,
 			forcePathStyle: true,
 			region: region,
@@ -56,7 +59,7 @@ export function getProgramSettings(): AppSettings {
 			...partialSettings,
 			s3Configuration: {
 				bucketName,
-				s3Client: client,
+				s3Client,
 			},
 		};
 	}
